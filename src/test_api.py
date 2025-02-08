@@ -64,3 +64,16 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
         ]:
             response = self.client.post("/urls", json=body)
             self.assertEqual(response.status_code, 422, msg=body)
+
+    def test_delete_url(self):
+        url = {"key": "test", "target": "https://example.com"}
+        response = self.client.post("/urls", json=url)
+        self.assertEqual(response.status_code, 201)
+
+        response = self.client.delete("/urls/test")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), url)
+
+    def test_delete_url_does_not_exists(self):
+        response = self.client.delete("/urls/test")
+        self.assertEqual(response.status_code, 404)
