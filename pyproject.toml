@@ -10,10 +10,12 @@ python = "^3.13"
 fastapi = {extras = ["standard"], version = "^0.115.8"}
 alembic = "^1.14.1"
 psycopg2 = "^2.9.10"
+asyncpg = "^0.30.0"
 
 
 [tool.poetry.group.dev.dependencies]
 black = "^25.1.0"
+aiosqlite = "^0.21.0"
 
 [build-system]
 requires = ["poetry-core"]
