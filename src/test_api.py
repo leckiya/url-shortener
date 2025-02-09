@@ -2,16 +2,15 @@ import unittest
 
 from fastapi.testclient import TestClient
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import create_async_engine
 
-from main import app, set_engine
+from database import set_engine, get_sessionmaker
+from main import app
 from models import Base, Url
 
 
 class TestApi(unittest.IsolatedAsyncioTestCase):
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    session = async_sessionmaker(engine)
-
     client = TestClient(app)
 
     async def asyncSetUp(self) -> None:
@@ -40,7 +39,7 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
             response.json(), {"key": "zulu", "target": "https://example.co.id"}
         )
 
-        async with self.session() as session:
+        async with get_sessionmaker()() as session:
             stmt = select(Url).order_by(Url.key)
             result = await session.execute(stmt)
 

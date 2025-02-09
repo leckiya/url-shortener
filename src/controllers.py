@@ -1,11 +1,11 @@
 from typing import Annotated
-from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from models import Url
-from database import request_session
+from database import SessionGetter, get_sessionmaker
 
 
 router = APIRouter()
@@ -33,8 +33,10 @@ class UrlObjects(BaseModel):
     response_model=UrlObjects,
     status_code=200,
 )
-async def get_all_url(request: Request) -> UrlObjects:
-    async with request_session(request) as session:
+async def get_all_url(
+    get_session: Annotated[SessionGetter, Depends(get_sessionmaker)],
+) -> UrlObjects:
+    async with get_session() as session:
         async with session.begin():
             stmt = select(Url).order_by(Url.key)
             results = await session.execute(stmt)
@@ -52,11 +54,12 @@ async def get_all_url(request: Request) -> UrlObjects:
     },
 )
 async def create_url(
-    request: Request, param: Annotated[UrlObject, Body()]
+    get_session: Annotated[SessionGetter, Depends(get_sessionmaker)],
+    param: Annotated[UrlObject, Body()],
 ) -> UrlObject:
     try:
         new_url = Url(key=param.key, target=param.target)
-        async with request_session(request) as session:
+        async with get_session() as session:
             async with session.begin():
                 session.add_all([new_url])
     except IntegrityError:
@@ -73,8 +76,11 @@ async def create_url(
         404: {"description": "Key does not exists"},
     },
 )
-async def delete_url(request: Request, key: Annotated[str, KeyField]) -> UrlObject:
-    async with request_session(request) as session:
+async def delete_url(
+    get_session: Annotated[SessionGetter, Depends(get_sessionmaker)],
+    key: Annotated[str, KeyField],
+) -> UrlObject:
+    async with get_session() as session:
         async with session.begin():
             stmt = delete(Url).where(Url.key == key).returning(Url)
             result = await session.execute(stmt)
@@ -100,11 +106,11 @@ class UrlUpdateChangeset(BaseModel):
     },
 )
 async def update_url(
-    request: Request,
+    get_session: Annotated[SessionGetter, Depends(get_sessionmaker)],
     key: Annotated[str, KeyField],
     param: Annotated[UrlUpdateChangeset, Body()],
 ) -> UrlObject:
-    async with request_session(request) as session:
+    async with get_session() as session:
         async with session.begin():
             stmt = (
                 update(Url)
@@ -127,8 +133,11 @@ async def update_url(
     status_code=308,
     responses={404: {"description": "Key does not exists"}},
 )
-async def redirect(request: Request, key: Annotated[str, KeyField]) -> RedirectResponse:
-    async with request_session(request) as session:
+async def redirect(
+    get_session: Annotated[SessionGetter, Depends(get_sessionmaker)],
+    key: Annotated[str, KeyField],
+) -> RedirectResponse:
+    async with get_session() as session:
         async with session.begin():
             try:
                 url = await session.get_one(Url, key)
