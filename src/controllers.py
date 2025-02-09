@@ -99,7 +99,7 @@ class UrlUpdateChangeset(BaseModel):
         404: {"description": "Key does not exists"},
     },
 )
-async def update_rul(
+async def update_url(
     request: Request,
     key: Annotated[str, KeyField],
     param: Annotated[UrlUpdateChangeset, Body()],
