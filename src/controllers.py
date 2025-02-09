@@ -124,7 +124,7 @@ async def update_rul(
 @router.get(
     "/redirect/{key}",
     response_model=None,
-    status_code=302,
+    status_code=308,
     responses={404: {"description": "Key does not exists"}},
 )
 async def redirect(request: Request, key: Annotated[str, KeyField]) -> RedirectResponse:
