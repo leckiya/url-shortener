@@ -1,7 +1,7 @@
 from typing import Annotated
 from fastapi import APIRouter, Body, HTTPException, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from models import Url
 from database import request_session
@@ -13,6 +13,10 @@ router = APIRouter()
 class UrlObject(BaseModel):
     key: str = Field(min_length=1, max_length=64)
     target: str = Field(min_length=1, max_length=256)
+
+
+def url_object_from_database(url: Url) -> UrlObject:
+    return UrlObject(key=url.key, target=url.target)
 
 
 class UrlObjects(BaseModel):
@@ -30,12 +34,7 @@ async def get_all_url(request: Request) -> UrlObjects:
             stmt = select(Url).order_by(Url.key)
             results = await session.execute(stmt)
             return UrlObjects(
-                urls=list(
-                    map(
-                        lambda i: UrlObject(key=i.key, target=i.target),
-                        results.scalars(),
-                    )
-                )
+                urls=list(map(url_object_from_database, results.scalars()))
             )
 
 
@@ -80,4 +79,36 @@ async def delete_url(request: Request, key: str) -> UrlObject:
                 raise HTTPException(status_code=404)
 
             url: Url = deleted.Url
-            return UrlObject(key=url.key, target=url.target)
+            return url_object_from_database(url)
+
+
+class UrlUpdateChangeset(BaseModel):
+    target: str = Field(min_length=1, max_length=256)
+
+
+@router.patch(
+    "/urls/{key}",
+    response_model=UrlObject,
+    status_code=200,
+    responses={
+        404: {"description": "Key does not exists"},
+    },
+)
+async def update_rul(
+    request: Request, key: str, param: Annotated[UrlUpdateChangeset, Body()]
+) -> UrlObject:
+    async with request_session(request) as session:
+        async with session.begin():
+            stmt = (
+                update(Url)
+                .where(Url.key == key)
+                .values(target=param.target)
+                .returning(Url)
+            )
+            result = await session.execute(stmt)
+            updated = result.scalar_one_or_none()
+
+            if updated is None:
+                raise HTTPException(status_code=404)
+
+            return url_object_from_database(updated)

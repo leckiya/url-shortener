@@ -98,3 +98,28 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
     def test_delete_url_does_not_exists(self):
         response = self.client.delete("/urls/test")
         self.assertEqual(response.status_code, 404)
+
+    def test_update_url(self):
+        url = {"key": "test", "target": "https://example.com"}
+        response = self.client.post("/urls", json=url)
+        self.assertEqual(response.status_code, 201)
+
+        result = self.client.get("/urls")
+        self.assertEqual(result.json(), {"urls": [url]})
+
+        new_url = {**url, "target": "https://example.co.id"}
+        response = self.client.patch("/urls/test", json={"target": new_url["target"]})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), new_url)
+
+        result = self.client.get("/urls")
+        self.assertEqual(result.json(), {"urls": [new_url]})
+
+    def test_update_missing_url(self):
+        response = self.client.patch("/urls/test", json={"target": "invalid"})
+        self.assertEqual(response.status_code, 404)
+
+    def test_update_invalid_inpute(self):
+        for target in ["", "a" * 300, None]:
+            response = self.client.patch("/urls/test", json={"target": target})
+            self.assertEqual(response.status_code, 422)
