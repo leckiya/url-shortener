@@ -65,14 +65,35 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
             response = self.client.post("/urls", json=body)
             self.assertEqual(response.status_code, 422, msg=body)
 
+        result = self.client.get("/urls")
+        self.assertEqual(result.json(), {"urls": []})
+
+    def test_get_all(self):
+        urls = [
+            {"key": "a", "target": "https://example.com"},
+            {"key": "b", "target": "https://example.co.id"},
+        ]
+
+        for url in reversed(urls):
+            self.client.post("/urls", json=url)
+
+        result = self.client.get("/urls")
+        self.assertEqual(result.json(), {"urls": urls})
+
     def test_delete_url(self):
         url = {"key": "test", "target": "https://example.com"}
         response = self.client.post("/urls", json=url)
         self.assertEqual(response.status_code, 201)
 
+        result = self.client.get("/urls")
+        self.assertEqual(result.json(), {"urls": [url]})
+
         response = self.client.delete("/urls/test")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), url)
+
+        result = self.client.get("/urls")
+        self.assertEqual(result.json(), {"urls": []})
 
     def test_delete_url_does_not_exists(self):
         response = self.client.delete("/urls/test")
