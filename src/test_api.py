@@ -99,6 +99,10 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
         response = self.client.delete("/urls/test")
         self.assertEqual(response.status_code, 404)
 
+    def test_delete_url_invalid_key(self):
+        response = self.client.delete("/urls/" + "a" * 300)
+        self.assertEqual(response.status_code, 422)
+
     def test_update_url(self):
         url = {"key": "test", "target": "https://example.com"}
         response = self.client.post("/urls", json=url)
@@ -119,7 +123,28 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
         response = self.client.patch("/urls/test", json={"target": "invalid"})
         self.assertEqual(response.status_code, 404)
 
+    def test_update_invalid_key(self):
+        response = self.client.patch("/urls/" + "a" * 300, json={"target": "invalid"})
+        self.assertEqual(response.status_code, 422)
+
     def test_update_invalid_inpute(self):
         for target in ["", "a" * 300, None]:
             response = self.client.patch("/urls/test", json={"target": target})
             self.assertEqual(response.status_code, 422)
+
+    def test_redirect(self):
+        url = {"key": "test", "target": "https://example.com"}
+        response = self.client.post("/urls", json=url)
+        self.assertEqual(response.status_code, 201)
+
+        response = self.client.get("/redirect/test", follow_redirects=False)
+        self.assertEqual(response.status_code, 308)
+        self.assertEqual(response.headers.get("location"), "https://example.com")
+
+    def test_redirect_missing(self):
+        response = self.client.get("/redirect/test", follow_redirects=False)
+        self.assertEqual(response.status_code, 404)
+
+    def test_redirect_invalid_key(self):
+        response = self.client.get("/redirect/" + "a" * 300, follow_redirects=False)
+        self.assertEqual(response.status_code, 422)
