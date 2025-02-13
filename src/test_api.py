@@ -75,6 +75,12 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
         async with self.engine.connect() as conn:
             await conn.run_sync(Base.metadata.drop_all)
 
+    async def test_create_new_url_not_authenticated(self):
+        response = self.client.post(
+            "/urls", json={"key": "test", "target": "https://example.com"}
+        )
+        self.assertEqual(response.status_code, 403)
+
     async def test_create_new_url(self):
         response = self.client.post(
             "/urls", json={"key": "test", "target": "https://example.com"}, auth=auth
@@ -120,6 +126,10 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
         result = self.client.get("/urls", auth=auth)
         self.assertEqual(result.json(), {"urls": []})
 
+    def test_get_all_not_authenticated(self):
+        response = self.client.get("/urls")
+        self.assertEqual(response.status_code, 403)
+
     def test_get_all(self):
         urls = [
             {"key": "a", "target": "https://example.com"},
@@ -131,6 +141,10 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
 
         result = self.client.get("/urls", auth=auth)
         self.assertEqual(result.json(), {"urls": urls})
+
+    def test_delete_url_not_authenticated(self):
+        response = self.client.delete("/urls/test")
+        self.assertEqual(response.status_code, 403)
 
     def test_delete_url(self):
         url = {"key": "test", "target": "https://example.com"}
@@ -154,6 +168,10 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
     def test_delete_url_invalid_key(self):
         response = self.client.delete("/urls/" + "a" * 300, auth=auth)
         self.assertEqual(response.status_code, 422)
+
+    def test_update_url_not_authenticated(self):
+        response = self.client.patch("/urls/test", json={"target": ""})
+        self.assertEqual(response.status_code, 403)
 
     def test_update_url(self):
         url = {"key": "test", "target": "https://example.com"}
