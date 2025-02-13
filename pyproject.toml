@@ -11,6 +11,8 @@ fastapi = {extras = ["standard"], version = "^0.115.8"}
 alembic = "^1.14.1"
 psycopg2 = "^2.9.10"
 asyncpg = "^0.30.0"
+pydantic-settings = "^2.7.1"
+pyjwt = {extras = ["crypto"], version = "^2.10.1"}
 
 
 [tool.poetry.group.dev.dependencies]
