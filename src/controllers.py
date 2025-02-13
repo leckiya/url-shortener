@@ -1,7 +1,6 @@
 from typing import Annotated
 from fastapi import APIRouter, Body, Depends, HTTPException, Security
 from fastapi.responses import RedirectResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
