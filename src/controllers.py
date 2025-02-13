@@ -1,14 +1,17 @@
 from typing import Annotated
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Security
 from fastapi.responses import RedirectResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
+from auth import Jwt, VerifyToken
 from models import Url
 from database import SessionGetter, get_sessionmaker
 
 
 router = APIRouter()
+auth = VerifyToken()
 
 
 KeyField = Field(min_length=1, max_length=64)
@@ -35,6 +38,7 @@ class UrlObjects(BaseModel):
 )
 async def get_all_url(
     get_session: Annotated[SessionGetter, Depends(get_sessionmaker)],
+    jwt: Annotated[Jwt, Security(auth.verify)],
 ) -> UrlObjects:
     async with get_session() as session:
         async with session.begin():
@@ -56,6 +60,7 @@ async def get_all_url(
 async def create_url(
     get_session: Annotated[SessionGetter, Depends(get_sessionmaker)],
     param: Annotated[UrlObject, Body()],
+    jwt: Annotated[Jwt, Security(auth.verify)],
 ) -> UrlObject:
     try:
         new_url = Url(key=param.key, target=param.target)
@@ -79,6 +84,7 @@ async def create_url(
 async def delete_url(
     get_session: Annotated[SessionGetter, Depends(get_sessionmaker)],
     key: Annotated[str, KeyField],
+    jwt: Annotated[Jwt, Security(auth.verify)],
 ) -> UrlObject:
     async with get_session() as session:
         async with session.begin():
@@ -109,6 +115,7 @@ async def update_url(
     get_session: Annotated[SessionGetter, Depends(get_sessionmaker)],
     key: Annotated[str, KeyField],
     param: Annotated[UrlUpdateChangeset, Body()],
+    jwt: Annotated[Jwt, Security(auth.verify)],
 ) -> UrlObject:
     async with get_session() as session:
         async with session.begin():
