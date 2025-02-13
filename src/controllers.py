@@ -147,7 +147,6 @@ async def redirect(
         async with session.begin():
             try:
                 url = await session.get_one(Url, key)
-                print(url.target)
                 return RedirectResponse(url=url.target, status_code=308)
             except NoResultFound:
                 raise HTTPException(status_code=404)

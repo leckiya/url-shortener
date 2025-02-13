@@ -1,22 +1,27 @@
-from functools import lru_cache
-
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Union
+from pydantic_settings import BaseSettings
 
 
 class Config(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=(".env", ".env.test"), env_file_encoding="utf-8"
-    )
-
     auth0_domain: str
     auth0_api_audience: str
     auth0_issuer: str
     auth0_algorithms: str
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, env_file: Union[str, list[str]]) -> None:
+        super().__init__(_env_file=env_file)
 
 
-@lru_cache()
+DEFAULT_ENV_FILES = [".env.example", ".env"]
+config = Config(env_file=DEFAULT_ENV_FILES)
+
+
 def get_config():
-    return Config()
+    global config
+    return config
+
+
+def load_config(env_file: Union[str, list[str]]):
+    global config
+    config = Config(env_file=env_file)
+    print(config)

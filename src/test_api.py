@@ -13,6 +13,7 @@ from database import set_engine, get_sessionmaker
 from main import app
 from models import Base, Url
 from controllers import auth as auth_verifier
+from config import DEFAULT_ENV_FILES, load_config
 
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import (
@@ -65,12 +66,16 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
     jwk_set_cache = new_jwk_set_cache()
 
     async def asyncSetUp(self) -> None:
+        load_config(".env.test")
+
         set_engine(self.engine)
         auth_verifier.jwks_client.jwk_set_cache = self.jwk_set_cache
         async with self.engine.connect() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
     async def asyncTearDown(self) -> None:
+        load_config(DEFAULT_ENV_FILES)
+
         auth_verifier.jwks_client.jwk_set_cache = None
         async with self.engine.connect() as conn:
             await conn.run_sync(Base.metadata.drop_all)
