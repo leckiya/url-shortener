@@ -19,11 +19,11 @@ class TestUrlTable(unittest.TestCase):
         Base.metadata.drop_all(self.engine)
 
     def test_id_must_be_unique(self):
-        url = Url("1", "https://example.com")
+        url = Url("a", "1", "https://example.com")
         self.session.add_all([url])
         self.session.commit()
 
-        url = Url("1", "https://example.com")
+        url = Url("b", "1", "https://example.com")
         self.session.add_all([url])
         with self.assertRaises(IntegrityError):
             self.session.commit()
