@@ -37,4 +37,7 @@ def get_sessionmaker() -> async_sessionmaker:
 def postgres_url(is_async: bool = True) -> str:
     config = get_config()
     async_flag = "+asyncpg" if is_async else ""
-    return f"postgresql{async_flag}://{config.postgres_user}:{config.postgres_password}@{config.postgres_host}:{config.postgres_port}/{config.postgres_database}"
+    return (
+        f"postgresql{async_flag}://{config.postgres_user}:{config.postgres_password}"
+        f"@{config.postgres_host}:{config.postgres_port}/{config.postgres_database}"
+    )
