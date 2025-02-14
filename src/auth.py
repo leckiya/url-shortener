@@ -1,10 +1,11 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field
-from config import get_config
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, SecurityScopes
-import jwt
+from pydantic import BaseModel, Field
+
+from config import get_config
 
 
 class UnauthorizedException(HTTPException):

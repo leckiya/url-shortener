@@ -20,7 +20,12 @@ black = "^25.1.0"
 aiosqlite = "^0.21.0"
 flake8 = "^7.1.1"
 pytest = "^8.3.4"
+isort = "^6.0.0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+
+[tool.isort]
+profile = "black"
