@@ -11,7 +11,7 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 
 from alembic import op
-from src.models import Url
+from models import Url
 
 # revision identifiers, used by Alembic.
 revision: str = "1b2bd4dcedab"
