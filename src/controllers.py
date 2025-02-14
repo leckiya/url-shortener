@@ -1,13 +1,14 @@
 from typing import Annotated
+
 from fastapi import APIRouter, Body, Depends, HTTPException, Security
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
-from auth import Jwt, VerifyToken
-from models import Url
-from database import SessionGetter, get_sessionmaker
 
+from auth import Jwt, VerifyToken
+from database import SessionGetter, get_sessionmaker
+from models import Url
 
 router = APIRouter()
 auth = VerifyToken()

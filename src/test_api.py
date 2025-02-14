@@ -1,27 +1,25 @@
 import unittest
-
-from fastapi.testclient import TestClient
-from httpx import Request
-from jwt.jwk_set_cache import JWKSetCache
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import create_async_engine
-import jwt
-import jwt.utils
 from typing import Any
 
-from database import set_engine, get_sessionmaker
-from main import app
-from models import Base, Url
-from controllers import auth as auth_verifier
-from config import DEFAULT_ENV_FILES, load_config
-
+import jwt
+import jwt.utils
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import (
     Encoding,
     NoEncryption,
     PrivateFormat,
 )
+from fastapi.testclient import TestClient
+from httpx import Request
+from jwt.jwk_set_cache import JWKSetCache
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import create_async_engine
 
+from config import DEFAULT_ENV_FILES, load_config
+from controllers import auth as auth_verifier
+from database import get_sessionmaker, set_engine
+from main import app
+from models import Base, Url
 
 private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 public_key = private_key.public_key()

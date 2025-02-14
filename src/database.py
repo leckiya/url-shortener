@@ -1,11 +1,13 @@
 import os
 from typing import Callable, Optional
+
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
-    async_sessionmaker,
     AsyncSession,
+    async_sessionmaker,
     create_async_engine,
 )
+
 from log import logger
 
 db_engine: Optional[AsyncEngine] = None

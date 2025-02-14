@@ -26,5 +26,7 @@ jobs:
         run: poetry run -- black --check **/*.py
       - name: Lint with flake8
         run: poetry run -- flake8
+      - name: Lint with isort
+        run: poetry run -- isort **/*.py --check
       - name: Run test
         run: poetry run -- pytest
