@@ -42,7 +42,7 @@ async def get_all_url(
 ) -> UrlObjects:
     async with get_session() as session:
         async with session.begin():
-            stmt = select(Url).order_by(Url.key)
+            stmt = select(Url).where(Url.owner == jwt.sub).order_by(Url.key)
             results = await session.execute(stmt)
             return UrlObjects(
                 urls=list(map(url_object_from_database, results.scalars()))
@@ -63,7 +63,7 @@ async def create_url(
     jwt: Annotated[Jwt, Security(auth.verify)],
 ) -> UrlObject:
     try:
-        new_url = Url(key=param.key, target=param.target)
+        new_url = Url(owner=jwt.sub, key=param.key, target=param.target)
         async with get_session() as session:
             async with session.begin():
                 session.add_all([new_url])
@@ -88,13 +88,19 @@ async def delete_url(
 ) -> UrlObject:
     async with get_session() as session:
         async with session.begin():
-            stmt = delete(Url).where(Url.key == key).returning(Url)
+            stmt = (
+                delete(Url)
+                .where(Url.key == key)
+                .where(Url.owner == jwt.sub)
+                .returning(Url)
+            )
             result = await session.execute(stmt)
 
             deleted = result.first()
             if deleted is None:
                 raise HTTPException(status_code=404)
 
+            print(deleted, jwt.sub)
             url: Url = deleted.Url
             return url_object_from_database(url)
 
@@ -122,6 +128,7 @@ async def update_url(
             stmt = (
                 update(Url)
                 .where(Url.key == key)
+                .where(Url.owner == jwt.sub)
                 .values(target=param.target)
                 .returning(Url)
             )
