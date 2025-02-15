@@ -15,9 +15,9 @@ from jwt.jwk_set_cache import JWKSetCache
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from config import DEFAULT_ENV_FILES, load_config
 from controllers import auth as auth_verifier
-from database import get_sessionmaker, set_engine
+from deps.config import DEFAULT_ENV_FILES, load_config
+from deps.database import get_sessionmaker, set_engine
 from main import app
 from models import Base, Url
 
@@ -270,3 +270,7 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
     def test_redirect_invalid_key(self):
         response = self.client.get("/redirect/" + "a" * 300, follow_redirects=False)
         self.assertEqual(response.status_code, 422)
+
+    def test_suggest_not_authenticated(self):
+        response = self.client.post("/suggest", json={"target": "https://example.com"})
+        self.assertEqual(response.status_code, 403)

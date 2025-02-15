@@ -13,6 +13,7 @@ psycopg2 = "^2.9.10"
 asyncpg = "^0.30.0"
 pydantic-settings = "^2.7.1"
 pyjwt = {extras = ["crypto"], version = "^2.10.1"}
+openai = "^1.63.0"
 
 
 [tool.poetry.group.dev.dependencies]
