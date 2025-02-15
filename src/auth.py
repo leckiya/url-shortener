@@ -5,7 +5,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, SecurityScopes
 from pydantic import BaseModel, Field
 
-from config import get_config
+from deps.config import get_config
 
 
 class UnauthorizedException(HTTPException):

@@ -7,7 +7,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 
 from auth import Jwt, VerifyToken
-from database import SessionGetter, get_sessionmaker
+from deps.database import SessionGetter, get_sessionmaker
 from models import Url
 
 router = APIRouter()

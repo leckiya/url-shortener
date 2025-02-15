@@ -15,9 +15,9 @@ from jwt.jwk_set_cache import JWKSetCache
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from config import DEFAULT_ENV_FILES, load_config
+from deps.config import DEFAULT_ENV_FILES, load_config
 from controllers import auth as auth_verifier
-from database import get_sessionmaker, set_engine
+from deps.database import get_sessionmaker, set_engine
 from main import app
 from models import Base, Url
 

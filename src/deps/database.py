@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from config import get_config
+from deps.config import get_config
 from log import logger
 
 db_engine: Optional[AsyncEngine] = None
