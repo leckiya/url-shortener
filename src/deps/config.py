@@ -15,6 +15,8 @@ class Config(BaseSettings):
     postgres_port: int
     postgres_database: str
 
+    openai_key: str
+
     def __init__(self, env_file: Union[str, list[str]]) -> None:
         super().__init__(_env_file=env_file)
 

@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError, NoResultFound
 
 from auth import Jwt, VerifyToken
 from deps.database import SessionGetter, get_sessionmaker
+from deps.openai import get_recommendation
 from models import Url
 
 router = APIRouter()
@@ -158,3 +159,22 @@ async def redirect(
                 return RedirectResponse(url=url.target, status_code=308)
             except NoResultFound:
                 raise HTTPException(status_code=404)
+
+
+class SuggestionRequest(BaseModel):
+    target: str = TargetField
+
+
+class SuggestionResponse(BaseModel):
+    key: str
+
+
+@router.post(
+    "/suggest",
+    status_code=200,
+)
+async def suggest(
+    request: Annotated[SuggestionRequest, Body()],
+    jwt: Annotated[Jwt, Security(auth.verify)],
+) -> SuggestionResponse:
+    return SuggestionResponse(key=await get_recommendation(request.target))
