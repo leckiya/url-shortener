@@ -4,12 +4,14 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Security
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select, update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError, NoResultFound
+from sqlalchemy.orm import selectinload
 
 from auth import Jwt, VerifyToken
 from deps.database import SessionGetter, get_sessionmaker
 from deps.openai import get_recommendation
-from models import Url
+from models import Url, UrlRedirectUsage
 
 router = APIRouter()
 auth = VerifyToken()
@@ -101,7 +103,6 @@ async def delete_url(
             if deleted is None:
                 raise HTTPException(status_code=404)
 
-            print(deleted, jwt.sub)
             url: Url = deleted.Url
             return url_object_from_database(url)
 
@@ -156,7 +157,47 @@ async def redirect(
         async with session.begin():
             try:
                 url = await session.get_one(Url, key)
+                analytics_stmt = insert(UrlRedirectUsage).values(url_key=url.key)
+                analytics_stmt = analytics_stmt.on_conflict_do_update(
+                    index_elements=[UrlRedirectUsage.url_key],
+                    set_=dict(count=(UrlRedirectUsage.count + 1)),
+                )
+                await session.execute(analytics_stmt)
                 return RedirectResponse(url=url.target, status_code=308)
+            except NoResultFound:
+                raise HTTPException(status_code=404)
+
+
+class UrlStatisticResponse(BaseModel):
+    key: str = KeyField
+    count: int
+
+
+@router.get(
+    "/urls/{key}/statistic",
+    response_model=UrlStatisticResponse,
+    responses={404: {"description": "Key does not exists"}},
+)
+async def get_url_statistic(
+    get_session: Annotated[SessionGetter, Depends(get_sessionmaker)],
+    key: Annotated[str, KeyField],
+    jwt: Annotated[Jwt, Security(auth.verify)],
+) -> UrlStatisticResponse:
+    async with get_session() as session:
+        async with session.begin():
+            try:
+                stmt = (
+                    select(Url)
+                    .where(Url.key == key)
+                    .where(Url.owner == jwt.sub)
+                    .options(selectinload(Url.url_redirect_usage))
+                )
+                result = await session.execute(stmt)
+                url = result.scalar_one()
+                usage = url.url_redirect_usage
+                return UrlStatisticResponse(
+                    key=url.key, count=usage.count if usage is not None else 0
+                )
             except NoResultFound:
                 raise HTTPException(status_code=404)
 
