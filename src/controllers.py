@@ -1,6 +1,6 @@
-from typing import Annotated
+from typing import Annotated, List
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Security
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Security
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select, update
@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from auth import Jwt, VerifyToken
 from deps.database import SessionGetter, get_sessionmaker
+from deps.ip import LocationService, location_service
 from deps.openai import get_recommendation
 from models import Url, UrlRedirectUsage
 
@@ -152,14 +153,23 @@ async def update_url(
 async def redirect(
     get_session: Annotated[SessionGetter, Depends(get_sessionmaker)],
     key: Annotated[str, KeyField],
+    location_service: Annotated[LocationService, Depends(location_service)],
+    request: Request,
 ) -> RedirectResponse:
+    country = "unknown"
+    client = request.client
+    if client is not None:
+        country = await location_service.get_country(client.host)
+
     async with get_session() as session:
         async with session.begin():
             try:
                 url = await session.get_one(Url, key)
-                analytics_stmt = insert(UrlRedirectUsage).values(url_key=url.key)
+                analytics_stmt = insert(UrlRedirectUsage).values(
+                    url_key=url.key, country=country
+                )
                 analytics_stmt = analytics_stmt.on_conflict_do_update(
-                    index_elements=[UrlRedirectUsage.url_key],
+                    index_elements=[UrlRedirectUsage.url_key, UrlRedirectUsage.country],
                     set_=dict(count=(UrlRedirectUsage.count + 1)),
                 )
                 await session.execute(analytics_stmt)
@@ -168,9 +178,14 @@ async def redirect(
                 raise HTTPException(status_code=404)
 
 
+class UrlStatisticPerCountry(BaseModel):
+    country: str = Field()
+    count: int = Field()
+
+
 class UrlStatisticResponse(BaseModel):
     key: str = KeyField
-    count: int
+    data: List[UrlStatisticPerCountry] = Field()
 
 
 @router.get(
@@ -190,13 +205,23 @@ async def get_url_statistic(
                     select(Url)
                     .where(Url.key == key)
                     .where(Url.owner == jwt.sub)
-                    .options(selectinload(Url.url_redirect_usage))
+                    .options(selectinload(Url.url_redirect_usages))
                 )
                 result = await session.execute(stmt)
                 url = result.scalar_one()
-                usage = url.url_redirect_usage
+                usages = url.url_redirect_usages
+                usages = list(
+                    map(
+                        lambda i: UrlStatisticPerCountry(
+                            country=i.country, count=i.count
+                        ),
+                        usages,
+                    )
+                )
+                usages.sort(key=lambda i: i.country)
                 return UrlStatisticResponse(
-                    key=url.key, count=usage.count if usage is not None else 0
+                    key=url.key,
+                    data=usages,
                 )
             except NoResultFound:
                 raise HTTPException(status_code=404)
