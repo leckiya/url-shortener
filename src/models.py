@@ -1,6 +1,6 @@
-from typing import Optional
+from typing import List
 
-from sqlalchemy import ForeignKey, Sequence
+from sqlalchemy import ForeignKey, Sequence, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -15,7 +15,7 @@ class Url(Base):
     owner: Mapped[str] = mapped_column()
     target: Mapped[str] = mapped_column()
 
-    url_redirect_usage: Mapped[Optional["UrlRedirectUsage"]] = relationship(
+    url_redirect_usages: Mapped[List["UrlRedirectUsage"]] = relationship(
         back_populates="url"
     )
 
@@ -43,7 +43,14 @@ class UrlRedirectUsage(Base):
     id: Mapped[int] = mapped_column(
         Sequence("url_redirect_usages_id_seq"), primary_key=True
     )
-    url_key: Mapped[str] = mapped_column(ForeignKey("urls.key"), unique=True)
+    url_key: Mapped[str] = mapped_column(ForeignKey("urls.key"))
+    country: Mapped[str] = mapped_column(server_default="unknown")
     count: Mapped[int] = mapped_column(server_default="1")
 
-    url: Mapped["Url"] = relationship(back_populates="url_redirect_usage")
+    url: Mapped["Url"] = relationship(back_populates="url_redirect_usages")
+
+    __table_args__ = (
+        UniqueConstraint(
+            "url_key", "country", name="url_redirect_usages_key_country_unique"
+        ),
+    )

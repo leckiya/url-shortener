@@ -17,6 +17,8 @@ class Config(BaseSettings):
 
     openai_key: str
 
+    ipinfo_token: str
+
     def __init__(self, env_file: Union[str, list[str]]) -> None:
         super().__init__(_env_file=env_file)
 

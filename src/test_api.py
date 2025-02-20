@@ -1,5 +1,6 @@
 import unittest
-from typing import Any, Callable
+from typing import Any, Callable, TypeVar
+from unittest.mock import Mock
 
 import jwt
 import jwt.utils
@@ -18,6 +19,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from controllers import auth as auth_verifier
 from deps.config import DEFAULT_ENV_FILES, load_config
 from deps.database import get_sessionmaker, set_engine
+from deps.ip import location_service
 from main import app
 from models import Base, Url
 
@@ -63,6 +65,16 @@ def new_jwk_set_cache() -> JWKSetCache:
     return cache
 
 
+location_service_mock = Mock()
+app.dependency_overrides[location_service] = lambda: location_service_mock
+
+T = TypeVar("T")
+
+
+async def const_async(ret: T) -> T:
+    return ret
+
+
 class TestApi(unittest.IsolatedAsyncioTestCase):
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     client = TestClient(app)
@@ -75,6 +87,9 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
         auth_verifier.jwks_client.jwk_set_cache = self.jwk_set_cache
         async with self.engine.connect() as conn:
             await conn.run_sync(Base.metadata.create_all)
+
+        global location_service_mock
+        location_service_mock.get_country = lambda ip: const_async("test_country")
 
     async def asyncTearDown(self) -> None:
         load_config(DEFAULT_ENV_FILES)
@@ -266,7 +281,31 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
 
             response = self.client.get("/urls/test/statistic", auth=auth())
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(response.json(), {"key": "test", "count": i})
+            self.assertEqual(
+                response.json(),
+                {"key": "test", "data": [{"country": "test_country", "count": i}]},
+            )
+
+        global location_service_mock
+        location_service_mock.get_country = lambda _: const_async("test_country_2")
+
+        for i in range(1, 6):
+            response = self.client.get("/redirect/test", follow_redirects=False)
+            self.assertEqual(response.status_code, 308)
+            self.assertEqual(response.headers.get("location"), "https://example.com")
+
+            response = self.client.get("/urls/test/statistic", auth=auth())
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(
+                response.json(),
+                {
+                    "key": "test",
+                    "data": [
+                        {"country": "test_country", "count": 5},
+                        {"country": "test_country_2", "count": i},
+                    ],
+                },
+            )
 
     def test_redirect_missing(self):
         response = self.client.get("/redirect/test", follow_redirects=False)
