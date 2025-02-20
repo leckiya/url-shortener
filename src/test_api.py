@@ -254,14 +254,19 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(response.status_code, 422)
 
-    def test_redirect(self):
+    async def test_redirect(self):
         url = {"key": "test", "target": "https://example.com"}
         response = self.client.post("/urls", json=url, auth=auth())
         self.assertEqual(response.status_code, 201)
 
-        response = self.client.get("/redirect/test", follow_redirects=False)
-        self.assertEqual(response.status_code, 308)
-        self.assertEqual(response.headers.get("location"), "https://example.com")
+        for i in range(1, 6):
+            response = self.client.get("/redirect/test", follow_redirects=False)
+            self.assertEqual(response.status_code, 308)
+            self.assertEqual(response.headers.get("location"), "https://example.com")
+
+            response = self.client.get("/urls/test/statistic", auth=auth())
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json(), {"key": "test", "count": i})
 
     def test_redirect_missing(self):
         response = self.client.get("/redirect/test", follow_redirects=False)
@@ -274,3 +279,11 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
     def test_suggest_not_authenticated(self):
         response = self.client.post("/suggest", json={"target": "https://example.com"})
         self.assertEqual(response.status_code, 403)
+
+    def test_statistic_not_authenticated(self):
+        response = self.client.get("/urls/test/statistic")
+        self.assertEqual(response.status_code, 403)
+
+    def test_statistic_not_found(self):
+        response = self.client.get("/urls/test/statistic", auth=auth())
+        self.assertEqual(response.status_code, 404)

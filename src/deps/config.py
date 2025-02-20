@@ -33,4 +33,3 @@ def get_config():
 def load_config(env_file: Union[str, list[str]]):
     global config
     config = Config(env_file=env_file)
-    print(config)
