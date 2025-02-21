@@ -3,7 +3,7 @@ from typing import Annotated, List
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Security
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, distinct, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.orm import selectinload
@@ -249,6 +249,7 @@ async def suggest(
 
 class StatisticResponse(BaseModel):
     n_links: int = Field()
+    n_user: int = Field()
 
 
 @router.get("/statistic")
@@ -257,8 +258,8 @@ async def statistic(
 ) -> StatisticResponse:
     async with get_session() as session:
         async with session.begin():
-            stmt = select(count(Url.key))
+            stmt = select(count(Url.key), count(distinct(Url.owner)))
             result = await session.execute(stmt)
 
-            [n_links] = result.one()
-            return StatisticResponse(n_links=n_links)
+            [n_links, n_user] = result.one()
+            return StatisticResponse(n_links=n_links, n_user=n_user)
