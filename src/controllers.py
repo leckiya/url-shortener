@@ -7,6 +7,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.orm import selectinload
+from sqlalchemy.sql.functions import count
 
 from auth import Jwt, VerifyToken
 from deps.database import SessionGetter, get_sessionmaker
@@ -244,3 +245,20 @@ async def suggest(
     jwt: Annotated[Jwt, Security(auth.verify)],
 ) -> SuggestionResponse:
     return SuggestionResponse(key=await get_recommendation(request.target))
+
+
+class StatisticResponse(BaseModel):
+    n_links: int = Field()
+
+
+@router.get("/statistic")
+async def statistic(
+    get_session: Annotated[SessionGetter, Depends(get_sessionmaker)],
+) -> StatisticResponse:
+    async with get_session() as session:
+        async with session.begin():
+            stmt = select(count(Url.key))
+            result = await session.execute(stmt)
+
+            [n_links] = result.one()
+            return StatisticResponse(n_links=n_links)
