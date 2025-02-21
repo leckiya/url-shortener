@@ -326,3 +326,16 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
     def test_statistic_not_found(self):
         response = self.client.get("/urls/test/statistic", auth=auth())
         self.assertEqual(response.status_code, 404)
+
+    def test_statistic(self):
+        response = self.client.get("/statistic")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"n_links": 0})
+
+        url = {"key": "test", "target": "https://example.com"}
+        response = self.client.post("/urls", json=url, auth=auth())
+        self.assertEqual(response.status_code, 201)
+
+        response = self.client.get("/statistic")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"n_links": 1})
