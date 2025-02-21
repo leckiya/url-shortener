@@ -330,7 +330,7 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
     def test_statistic(self):
         response = self.client.get("/statistic")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"n_links": 0})
+        self.assertEqual(response.json(), {"n_links": 0, "n_user": 0})
 
         url = {"key": "test", "target": "https://example.com"}
         response = self.client.post("/urls", json=url, auth=auth())
@@ -338,4 +338,20 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
 
         response = self.client.get("/statistic")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"n_links": 1})
+        self.assertEqual(response.json(), {"n_links": 1, "n_user": 1})
+
+        url = {"key": "test_2", "target": "https://example.com"}
+        response = self.client.post("/urls", json=url, auth=auth("other_user"))
+        self.assertEqual(response.status_code, 201)
+
+        response = self.client.get("/statistic")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"n_links": 2, "n_user": 2})
+
+        url = {"key": "test_3", "target": "https://example.com"}
+        response = self.client.post("/urls", json=url, auth=auth("other_user"))
+        self.assertEqual(response.status_code, 201)
+
+        response = self.client.get("/statistic")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"n_links": 3, "n_user": 2})
