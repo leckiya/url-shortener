@@ -158,9 +158,13 @@ async def redirect(
     request: Request,
 ) -> RedirectResponse:
     country = "unknown"
-    client = request.client
-    if client is not None:
-        country = await location_service.get_country(client.host)
+
+    ip = request.headers.get("X-Forwarded-For")
+    if ip is None and request.client is not None:
+        ip = request.client.host
+
+    if ip is not None:
+        country = await location_service.get_country(ip)
 
     async with get_session() as session:
         async with session.begin():
