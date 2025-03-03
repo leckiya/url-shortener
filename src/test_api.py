@@ -110,17 +110,17 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(response.status_code, 201)
         self.assertEqual(
-            response.json(), {"key": "test", "target": "https://example.com"}
+            response.json(), {"key": "test", "target": "https://example.com/"}
         )
 
         response = self.client.post(
             "/urls",
-            json={"key": "zulu", "target": "https://example.co.id"},
+            json={"key": "zulu", "target": "https://example.co.id/"},
             auth=auth(),
         )
         self.assertEqual(response.status_code, 201)
         self.assertEqual(
-            response.json(), {"key": "zulu", "target": "https://example.co.id"}
+            response.json(), {"key": "zulu", "target": "https://example.co.id/"}
         )
 
         async with get_sessionmaker()() as session:
@@ -130,13 +130,17 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 list(result.scalars()),
                 [
-                    Url(owner="testing", key="test", target="https://example.com"),
-                    Url(owner="testing", key="zulu", target="https://example.co.id"),
+                    Url(owner="testing", key="test", target="https://example.com/"),
+                    Url(owner="testing", key="zulu", target="https://example.co.id/"),
                 ],
             )
 
     def test_create_new_url_invalid_input(self):
         for body in [
+            {"key": "Test", "target": "https://example.com"},
+            {"key": "t*st", "target": "https://example.com"},
+            {"key": "test", "target": "fff://example.com"},
+            {"key": "test", "target": "https://ex^mple.com"},
             {"key": "", "target": "https://example.com"},
             {"key": "test", "target": ""},
             {"key": "a" * 100, "target": "test"},
@@ -157,10 +161,10 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
 
     def test_get_all(self):
         urls = [
-            {"owner": "user_1", "body": {"key": "a", "target": "https://example.com"}},
+            {"owner": "user_1", "body": {"key": "a", "target": "https://example.com/"}},
             {
                 "owner": "user_2",
-                "body": {"key": "b", "target": "https://example.co.id"},
+                "body": {"key": "b", "target": "https://example.co.id/"},
             },
         ]
 
@@ -175,7 +179,7 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_delete_url(self):
-        url = {"key": "test", "target": "https://example.com"}
+        url = {"key": "test", "target": "https://example.com/"}
         response = self.client.post("/urls", json=url, auth=auth())
         self.assertEqual(response.status_code, 201)
 
@@ -190,7 +194,7 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.json(), {"urls": []})
 
     def test_delete_url_other_user(self):
-        url = {"key": "test", "target": "https://example.com"}
+        url = {"key": "test", "target": "https://example.com/"}
         response = self.client.post("/urls", json=url, auth=auth())
         self.assertEqual(response.status_code, 201)
 
@@ -216,14 +220,14 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_update_url(self):
-        url = {"key": "test", "target": "https://example.com"}
+        url = {"key": "test", "target": "https://example.com/"}
         response = self.client.post("/urls", json=url, auth=auth())
         self.assertEqual(response.status_code, 201)
 
         result = self.client.get("/urls", auth=auth())
         self.assertEqual(result.json(), {"urls": [url]})
 
-        new_url = {**url, "target": "https://example.co.id"}
+        new_url = {**url, "target": "https://example.co.id/"}
         response = self.client.patch(
             "/urls/test", json={"target": new_url["target"]}, auth=auth()
         )
@@ -234,14 +238,14 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.json(), {"urls": [new_url]})
 
     def test_update_url_other_user(self):
-        url = {"key": "test", "target": "https://example.com"}
+        url = {"key": "test", "target": "https://example.com/"}
         response = self.client.post("/urls", json=url, auth=auth())
         self.assertEqual(response.status_code, 201)
 
         result = self.client.get("/urls", auth=auth())
         self.assertEqual(result.json(), {"urls": [url]})
 
-        new_url = {**url, "target": "https://example.co.id"}
+        new_url = {**url, "target": "https://example.co.id/"}
         response = self.client.patch(
             "/urls/test", json={"target": new_url["target"]}, auth=auth("other")
         )
@@ -252,18 +256,18 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
 
     def test_update_missing_url(self):
         response = self.client.patch(
-            "/urls/test", json={"target": "invalid"}, auth=auth()
+            "/urls/test", json={"target": "https://example.com"}, auth=auth()
         )
         self.assertEqual(response.status_code, 404)
 
     def test_update_invalid_key(self):
         response = self.client.patch(
-            "/urls/" + "a" * 300, json={"target": "invalid"}, auth=auth()
+            "/urls/" + "a" * 300, json={"target": "https://example.com"}, auth=auth()
         )
         self.assertEqual(response.status_code, 422)
 
     def test_update_invalid_inpute(self):
-        for target in ["", "a" * 300, None]:
+        for target in ["", "a" * 300, None, "f://example.com", "https://ex^mple.com"]:
             response = self.client.patch(
                 "/urls/test", json={"target": target}, auth=auth()
             )
@@ -277,7 +281,7 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
         for i in range(1, 6):
             response = self.client.get("/redirect/test", follow_redirects=False)
             self.assertEqual(response.status_code, 308)
-            self.assertEqual(response.headers.get("location"), "https://example.com")
+            self.assertEqual(response.headers.get("location"), "https://example.com/")
 
             response = self.client.get("/urls/test/statistic", auth=auth())
             self.assertEqual(response.status_code, 200)
@@ -292,7 +296,7 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
         for i in range(1, 6):
             response = self.client.get("/redirect/test", follow_redirects=False)
             self.assertEqual(response.status_code, 308)
-            self.assertEqual(response.headers.get("location"), "https://example.com")
+            self.assertEqual(response.headers.get("location"), "https://example.com/")
 
             response = self.client.get("/urls/test/statistic", auth=auth())
             self.assertEqual(response.status_code, 200)
