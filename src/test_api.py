@@ -359,3 +359,88 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
         response = self.client.get("/statistic")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"n_links": 3, "n_user": 2})
+
+    def test_set_webhook_not_authenticated(self):
+        response = self.client.post(
+            "/webhooks", json={"url": "https://example.com"}, auth=auth()
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"url": "https://example.com/"})
+
+        response = self.client.get("/webhooks", auth=auth())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"url": "https://example.com/"})
+
+        response = self.client.post("/webhooks", json={"url": "https://example2.com"})
+        self.assertEqual(response.status_code, 403)
+
+        response = self.client.get("/webhooks", auth=auth())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"url": "https://example.com/"})
+
+    def test_set_webhook(self):
+        response = self.client.post(
+            "/webhooks", json={"url": "https://example.com"}, auth=auth()
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"url": "https://example.com/"})
+
+        response = self.client.get("/webhooks", auth=auth())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"url": "https://example.com/"})
+
+    def test_set_webhook_invalid_url(self):
+        response = self.client.post(
+            "/webhooks", json={"url": "https://example.com"}, auth=auth()
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"url": "https://example.com/"})
+
+        response = self.client.get("/webhooks", auth=auth())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"url": "https://example.com/"})
+
+        response = self.client.post(
+            "/webhooks", json={"url": "https://ex^mple.com"}, auth=auth()
+        )
+        self.assertEqual(response.status_code, 422)
+
+        response = self.client.get("/webhooks", auth=auth())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"url": "https://example.com/"})
+
+    def test_get_webhook_not_authenticated(self):
+        response = self.client.get("/webhooks")
+        self.assertEqual(response.status_code, 403)
+
+    def test_get_webhook(self):
+        response = self.client.get("/webhooks", auth=auth())
+        self.assertEqual(response.status_code, 404)
+
+        response = self.client.post(
+            "/webhooks", json={"url": "https://example.com"}, auth=auth()
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"url": "https://example.com/"})
+
+        response = self.client.get("/webhooks", auth=auth())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"url": "https://example.com/"})
+
+    def test_delete_webhook(self):
+        response = self.client.post(
+            "/webhooks", json={"url": "https://example.com"}, auth=auth()
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"url": "https://example.com/"})
+
+        response = self.client.get("/webhooks", auth=auth())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"url": "https://example.com/"})
+
+        for _ in range(2):
+            response = self.client.delete("/webhooks", auth=auth())
+            self.assertEqual(response.status_code, 200)
+
+            response = self.client.get("/webhooks", auth=auth())
+            self.assertEqual(response.status_code, 404)

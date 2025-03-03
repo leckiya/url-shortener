@@ -54,3 +54,10 @@ class UrlRedirectUsage(Base):
             "url_key", "country", name="url_redirect_usages_key_country_unique"
         ),
     )
+
+
+class Webhook(Base):
+    __tablename__ = "webhooks"
+
+    user: Mapped[str] = mapped_column(primary_key=True)
+    url: Mapped[str] = mapped_column()
