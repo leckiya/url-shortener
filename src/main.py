@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 
-from controllers import router
+import controllers.url
+import controllers.webhook
 
 app = FastAPI(title="URL Shortener")
 
 
-app.include_router(router)
+app.include_router(controllers.url.router)
+app.include_router(controllers.webhook.router)

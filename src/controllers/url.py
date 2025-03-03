@@ -9,14 +9,14 @@ from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.functions import count
 
-from auth import Jwt, VerifyToken
+from auth import Jwt
+from controllers import auth
 from deps.database import SessionGetter, get_sessionmaker
 from deps.ip import LocationService, location_service
 from deps.openai import get_recommendation
 from models import Url, UrlRedirectUsage
 
 router = APIRouter()
-auth = VerifyToken()
 
 
 KeyField = Field(min_length=1, max_length=64, pattern=r"^[a-z\d\-_]+$")
