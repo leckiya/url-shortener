@@ -2,7 +2,7 @@ from typing import Annotated, List
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Security
 from fastapi.responses import RedirectResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, HttpUrl
 from sqlalchemy import delete, distinct, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError, NoResultFound
@@ -19,17 +19,17 @@ router = APIRouter()
 auth = VerifyToken()
 
 
-KeyField = Field(min_length=1, max_length=64)
+KeyField = Field(min_length=1, max_length=64, pattern=r"^[a-z\d\-_]+$")
 TargetField = Field(min_length=1, max_length=256)
 
 
 class UrlObject(BaseModel):
     key: str = KeyField
-    target: str = TargetField
+    target: HttpUrl = TargetField
 
 
 def url_object_from_database(url: Url) -> UrlObject:
-    return UrlObject(key=url.key, target=url.target)
+    return UrlObject(key=url.key, target=HttpUrl(url.target))
 
 
 class UrlObjects(BaseModel):
@@ -68,7 +68,7 @@ async def create_url(
     jwt: Annotated[Jwt, Security(auth.verify)],
 ) -> UrlObject:
     try:
-        new_url = Url(owner=jwt.sub, key=param.key, target=param.target)
+        new_url = Url(owner=jwt.sub, key=param.key, target=str(param.target))
         async with get_session() as session:
             async with session.begin():
                 session.add_all([new_url])
@@ -110,7 +110,7 @@ async def delete_url(
 
 
 class UrlUpdateChangeset(BaseModel):
-    target: str = Field(min_length=1, max_length=256)
+    target: HttpUrl = TargetField
 
 
 @router.patch(
@@ -127,13 +127,14 @@ async def update_url(
     param: Annotated[UrlUpdateChangeset, Body()],
     jwt: Annotated[Jwt, Security(auth.verify)],
 ) -> UrlObject:
+    print(param)
     async with get_session() as session:
         async with session.begin():
             stmt = (
                 update(Url)
                 .where(Url.key == key)
                 .where(Url.owner == jwt.sub)
-                .values(target=param.target)
+                .values(target=str(param.target))
                 .returning(Url)
             )
             result = await session.execute(stmt)
