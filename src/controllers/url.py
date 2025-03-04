@@ -128,6 +128,7 @@ class UrlUpdateChangeset(BaseModel):
 )
 async def update_url(
     get_session: Annotated[SessionGetter, Depends(get_sessionmaker)],
+    webhook_sender: Annotated[WebhookSender, Depends(WebhookSender)],
     key: Annotated[str, KeyField],
     param: Annotated[UrlUpdateChangeset, Body()],
     jwt: Annotated[Jwt, Security(auth.verify)],
@@ -148,6 +149,7 @@ async def update_url(
             if updated is None:
                 raise HTTPException(status_code=404)
 
+            await webhook_sender.link_updated(updated)
             return url_object_from_database(updated)
 
 

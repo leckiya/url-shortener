@@ -30,6 +30,11 @@ class WebhookSender:
             url.owner, {"action": "deleted", "key": url.key, "target": url.target}
         )
 
+    async def link_updated(self, url: Url):
+        await self._send(
+            url.owner, {"action": "deleted", "key": url.key, "new_target": url.target}
+        )
+
     async def _send(self, user: str, body: Any):
         async with self.get_session() as session:
             async with session.begin():
