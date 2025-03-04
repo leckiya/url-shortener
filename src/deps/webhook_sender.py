@@ -1,9 +1,8 @@
-from typing import Annotated, Optional
+from typing import Annotated, Any
 
 import requests
 from fastapi import Depends
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from deps.database import SessionGetter, get_sessionmaker
 from log import logger
@@ -19,24 +18,27 @@ class WebhookSender:
         self.get_session = get_session
 
     async def link_clicked(self, url: Url):
+        await self._send(url.owner, {"action": "redirect", "key": url.key})
+
+    async def link_created(self, url: Url):
+        await self._send(
+            url.owner, {"action": "created", "key": url.key, "target": url.target}
+        )
+
+    async def _send(self, user: str, body: Any):
         async with self.get_session() as session:
             async with session.begin():
-                webhook = await fetch_webhook(session, url.owner)
-                if webhook is None:
+                try:
+                    webhook = await session.get_one(Webhook, user)
+                except NoResultFound:
                     return
 
                 response = requests.post(
-                    webhook.url, json={"action": "redirect", "key": url.key}
+                    webhook.url,
+                    json=body,
                 )
                 if response.status_code != 200:
                     logger.warning(
                         f"failed to send webhook to {webhook.url} with"
                         f" status code {response.status_code}"
                     )
-
-
-async def fetch_webhook(session: AsyncSession, user: str) -> Optional[Webhook]:
-    try:
-        return await session.get_one(Webhook, user)
-    except NoResultFound:
-        return None

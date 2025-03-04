@@ -471,3 +471,27 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
 
         body = json.loads(httpretty.last_request().body)
         self.assertEqual(body, {"action": "redirect", "key": "test"})
+
+    @httpretty.activate()
+    def test_webhook_on_create(self):
+        httpretty.register_uri(httpretty.POST, "https://webhook.com")
+
+        response = self.client.post(
+            "/webhooks", json={"url": "https://webhook.com"}, auth=auth()
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"url": "https://webhook.com/"})
+
+        response = self.client.post(
+            "/urls", json={"key": "test", "target": "https://example.com"}, auth=auth()
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            response.json(), {"key": "test", "target": "https://example.com/"}
+        )
+
+        body = json.loads(httpretty.last_request().body)
+        self.assertEqual(
+            body,
+            {"action": "created", "key": "test", "target": "https://example.com/"},
+        )
