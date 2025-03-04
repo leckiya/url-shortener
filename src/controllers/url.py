@@ -65,6 +65,7 @@ async def get_all_url(
 )
 async def create_url(
     get_session: Annotated[SessionGetter, Depends(get_sessionmaker)],
+    webhook_sender: Annotated[WebhookSender, Depends(WebhookSender)],
     param: Annotated[UrlObject, Body()],
     jwt: Annotated[Jwt, Security(auth.verify)],
 ) -> UrlObject:
@@ -73,6 +74,7 @@ async def create_url(
         async with get_session() as session:
             async with session.begin():
                 session.add_all([new_url])
+                await webhook_sender.link_created(new_url)
     except IntegrityError:
         raise HTTPException(status_code=409)
 
