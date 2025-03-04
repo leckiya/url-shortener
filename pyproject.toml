@@ -15,6 +15,7 @@ pydantic-settings = "^2.7.1"
 pyjwt = {extras = ["crypto"], version = "^2.10.1"}
 openai = "^1.63.0"
 aiohttp = "^3.11.12"
+requests = "^2.32.3"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -23,6 +24,7 @@ aiosqlite = "^0.21.0"
 flake8 = "^7.1.1"
 pytest = "^8.3.4"
 isort = "^6.0.0"
+httpretty = "^1.1.4"
 
 [build-system]
 requires = ["poetry-core"]
