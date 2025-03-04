@@ -91,6 +91,7 @@ async def create_url(
 )
 async def delete_url(
     get_session: Annotated[SessionGetter, Depends(get_sessionmaker)],
+    webhook_sender: Annotated[WebhookSender, Depends(WebhookSender)],
     key: Annotated[str, KeyField],
     jwt: Annotated[Jwt, Security(auth.verify)],
 ) -> UrlObject:
@@ -109,6 +110,7 @@ async def delete_url(
                 raise HTTPException(status_code=404)
 
             url: Url = deleted.Url
+            await webhook_sender.link_deleted(url)
             return url_object_from_database(url)
 
 
