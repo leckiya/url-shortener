@@ -14,6 +14,7 @@ from controllers import auth
 from deps.database import SessionGetter, get_sessionmaker
 from deps.ip import LocationService, location_service
 from deps.openai import get_recommendation
+from deps.webhook_sender import WebhookSender
 from models import Url, UrlRedirectUsage
 
 router = APIRouter()
@@ -156,6 +157,7 @@ async def redirect(
     get_session: Annotated[SessionGetter, Depends(get_sessionmaker)],
     key: Annotated[str, KeyField],
     location_service: Annotated[LocationService, Depends(location_service)],
+    webhook_sender: Annotated[WebhookSender, Depends(WebhookSender)],
     request: Request,
 ) -> RedirectResponse:
     country = "unknown"
@@ -179,6 +181,7 @@ async def redirect(
                     set_=dict(count=(UrlRedirectUsage.count + 1)),
                 )
                 await session.execute(analytics_stmt)
+                await webhook_sender.link_clicked(url)
                 return RedirectResponse(url=url.target, status_code=308)
             except NoResultFound:
                 raise HTTPException(status_code=404)

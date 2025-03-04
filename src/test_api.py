@@ -1,7 +1,9 @@
+import json
 import unittest
 from typing import Any, Callable, TypeVar
 from unittest.mock import Mock
 
+import httpretty
 import jwt
 import jwt.utils
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -444,3 +446,28 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
 
             response = self.client.get("/webhooks", auth=auth())
             self.assertEqual(response.status_code, 404)
+
+    @httpretty.activate()
+    def test_webhook_on_redirect(self):
+        httpretty.register_uri(httpretty.POST, "https://webhook.com")
+
+        response = self.client.post(
+            "/webhooks", json={"url": "https://webhook.com"}, auth=auth()
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"url": "https://webhook.com/"})
+
+        response = self.client.post(
+            "/urls", json={"key": "test", "target": "https://example.com"}, auth=auth()
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            response.json(), {"key": "test", "target": "https://example.com/"}
+        )
+
+        response = self.client.get("/redirect/test", follow_redirects=False)
+        self.assertEqual(response.status_code, 308)
+        self.assertEqual(response.headers.get("location"), "https://example.com/")
+
+        body = json.loads(httpretty.last_request().body)
+        self.assertEqual(body, {"action": "redirect", "key": "test"})
