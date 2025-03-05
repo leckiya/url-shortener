@@ -522,3 +522,36 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
             body,
             {"action": "deleted", "key": "test", "target": "https://example.com/"},
         )
+
+    @httpretty.activate()
+    def test_webhook_on_update(self):
+        httpretty.register_uri(httpretty.POST, "https://webhook.com")
+
+        response = self.client.post(
+            "/webhooks", json={"url": "https://webhook.com"}, auth=auth()
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"url": "https://webhook.com/"})
+
+        response = self.client.post(
+            "/urls", json={"key": "test", "target": "https://example.com"}, auth=auth()
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            response.json(), {"key": "test", "target": "https://example.com/"}
+        )
+
+        response = self.client.patch(
+            "/urls/test", json={"target": "https://example-2.com/"}, auth=auth()
+        )
+        self.assertEqual(response.status_code, 200)
+
+        body = json.loads(httpretty.last_request().body)
+        self.assertEqual(
+            body,
+            {
+                "action": "deleted",
+                "key": "test",
+                "new_target": "https://example-2.com/",
+            },
+        )
