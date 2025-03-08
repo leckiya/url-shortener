@@ -6,9 +6,8 @@ from sqlalchemy import delete
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import NoResultFound
 
-from auth import Jwt
-from controllers import auth
-from deps.database import SessionGetter, get_sessionmaker
+from auth import Jwt, verify_token
+from deps.database import SessionMaker
 from models import Webhook
 
 router = APIRouter()
@@ -20,10 +19,10 @@ class WebhookObject(BaseModel):
 
 @router.get("/webhooks", responses={404: {"description": "webhook is not set"}})
 async def get_webhook(
-    get_session: Annotated[SessionGetter, Depends(get_sessionmaker)],
-    jwt: Annotated[Jwt, Security(auth.verify)],
+    session_maker: Annotated[SessionMaker, Depends(SessionMaker)],
+    jwt: Annotated[Jwt, Security(verify_token)],
 ) -> WebhookObject:
-    async with get_session() as session:
+    async with session_maker() as session:
         async with session.begin():
             try:
                 webhook = await session.get_one(Webhook, jwt.sub)
@@ -34,11 +33,11 @@ async def get_webhook(
 
 @router.post("/webhooks")
 async def set_webhook(
-    get_session: Annotated[SessionGetter, Depends(get_sessionmaker)],
-    jwt: Annotated[Jwt, Security(auth.verify)],
+    session_maker: Annotated[SessionMaker, Depends(SessionMaker)],
+    jwt: Annotated[Jwt, Security(verify_token)],
     param: Annotated[WebhookObject, Body()],
 ) -> WebhookObject:
-    async with get_session() as session:
+    async with session_maker() as session:
         async with session.begin():
             stmt = insert(Webhook).values(user=jwt.sub, url=str(param.url))
             stmt = stmt.on_conflict_do_update(
@@ -51,10 +50,10 @@ async def set_webhook(
 
 @router.delete("/webhooks")
 async def delete_webhook(
-    get_session: Annotated[SessionGetter, Depends(get_sessionmaker)],
-    jwt: Annotated[Jwt, Security(auth.verify)],
+    session_maker: Annotated[SessionMaker, Depends(SessionMaker)],
+    jwt: Annotated[Jwt, Security(verify_token)],
 ):
-    async with get_session() as session:
+    async with session_maker() as session:
         async with session.begin():
             stmt = delete(Webhook).where(Webhook.user == jwt.sub)
             await session.execute(stmt)

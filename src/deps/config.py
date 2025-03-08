@@ -1,6 +1,13 @@
-from typing import Union
+from typing import Annotated
 
+from fastapi import Depends
 from pydantic_settings import BaseSettings
+
+DEFAULT_ENV_FILES = ["../.env", ".env"]
+
+
+def env_files() -> list[str]:
+    return DEFAULT_ENV_FILES
 
 
 class Config(BaseSettings):
@@ -19,19 +26,5 @@ class Config(BaseSettings):
 
     ipinfo_token: str
 
-    def __init__(self, env_file: Union[str, list[str]]) -> None:
+    def __init__(self, env_file: Annotated[list[str], Depends(env_files)]) -> None:
         super().__init__(_env_file=env_file)
-
-
-DEFAULT_ENV_FILES = ["../.env.example", ".env.example", "../.env", ".env"]
-config = Config(env_file=DEFAULT_ENV_FILES)
-
-
-def get_config():
-    global config
-    return config
-
-
-def load_config(env_file: Union[str, list[str]]):
-    global config
-    config = Config(env_file=env_file)
