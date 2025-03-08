@@ -1,4 +1,4 @@
-from typing import Annotated, Optional
+from typing import Annotated
 
 from aiohttp import ClientSession
 from fastapi import Depends
@@ -10,7 +10,7 @@ from log import logger
 class LocationService:
     ipinfo_token: str
 
-    def __init__(self, config: Config) -> None:
+    def __init__(self, config: Annotated[Config, Depends(get_config)]) -> None:
         self.ipinfo_token = config.ipinfo_token
 
     async def get_country(self, ip: str) -> str:
@@ -31,15 +31,3 @@ class LocationService:
                     return "unknown"
 
                 return response["country"]
-
-
-locationService: Optional[LocationService] = None
-
-
-def location_service(config: Annotated[Config, Depends(get_config)]) -> LocationService:
-    global locationService
-    if locationService is not None:
-        return locationService
-
-    locationService = LocationService(config)
-    return locationService

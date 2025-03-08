@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from controllers import auth as auth_verifier
 from deps.config import DEFAULT_ENV_FILES, load_config
 from deps.database import get_sessionmaker, set_engine
-from deps.ip import location_service
+from deps.ip import LocationService
 from main import app
 from models import Base, Url
 
@@ -68,7 +68,7 @@ def new_jwk_set_cache() -> JWKSetCache:
 
 
 location_service_mock = Mock()
-app.dependency_overrides[location_service] = lambda: location_service_mock
+app.dependency_overrides[LocationService] = lambda: location_service_mock
 
 T = TypeVar("T")
 
