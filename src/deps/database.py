@@ -1,5 +1,6 @@
-from typing import Callable, Optional
+from typing import Annotated
 
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -7,35 +8,24 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from deps.config import get_config
-from log import logger
-
-db_engine: Optional[AsyncEngine] = None
-sessionmaker: Optional[async_sessionmaker] = None
+from deps.config import Config
 
 
-SessionGetter = Callable[[], AsyncSession]
+def engine_builder(config: Annotated[Config, Depends(Config)]):
+    create_async_engine(postgres_url(config), pool_size=20)
 
 
-def set_engine(engine: AsyncEngine) -> None:
-    global db_engine, sessionmaker
-    db_engine = engine
-    sessionmaker = async_sessionmaker(engine)
+class SessionMaker:
+    sessionmaker: async_sessionmaker
+
+    def __init__(self, engine: Annotated[AsyncEngine, Depends(engine_builder)]) -> None:
+        self.sessionmaker = async_sessionmaker(engine)
+
+    def __call__(self) -> AsyncSession:
+        return self.sessionmaker()
 
 
-def get_sessionmaker() -> async_sessionmaker:
-    global engine, sessionmaker
-    if sessionmaker is None:
-        logger.info("initializing db_engine")
-        db_engine = create_async_engine(postgres_url(), pool_size=20)
-        set_engine(db_engine)
-
-    assert sessionmaker is not None
-    return sessionmaker
-
-
-def postgres_url(is_async: bool = True) -> str:
-    config = get_config()
+def postgres_url(config: Config, is_async: bool = True) -> str:
     async_flag = "+asyncpg" if is_async else ""
     return (
         f"postgresql{async_flag}://{config.postgres_user}:{config.postgres_password}"

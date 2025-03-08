@@ -3,14 +3,14 @@ from typing import Annotated
 from aiohttp import ClientSession
 from fastapi import Depends
 
-from deps.config import Config, get_config
+from deps.config import Config
 from log import logger
 
 
 class LocationService:
     ipinfo_token: str
 
-    def __init__(self, config: Annotated[Config, Depends(get_config)]) -> None:
+    def __init__(self, config: Annotated[Config, Depends(Config)]) -> None:
         self.ipinfo_token = config.ipinfo_token
 
     async def get_country(self, ip: str) -> str:

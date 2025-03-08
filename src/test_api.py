@@ -15,15 +15,14 @@ from cryptography.hazmat.primitives.serialization import (
 from fastapi.testclient import TestClient
 from httpx import Request
 from jwt.jwk_set_cache import JWKSetCache
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from controllers import auth as auth_verifier
-from deps.config import DEFAULT_ENV_FILES, load_config
-from deps.database import get_sessionmaker, set_engine
+from auth import JwksClient
+from deps.config import Config
+from deps.database import engine_builder
 from deps.ip import LocationService
 from main import app
-from models import Base, Url
+from models import Base
 
 private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 public_key = private_key.public_key()
@@ -67,8 +66,18 @@ def new_jwk_set_cache() -> JWKSetCache:
     return cache
 
 
+config = Config([".env.test"])
+jwks_client = JwksClient(config)
+jwk_set_cache = new_jwk_set_cache()
+jwks_client.client.jwk_set_cache = jwk_set_cache
+
+engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+
 location_service_mock = Mock()
 app.dependency_overrides[LocationService] = lambda: location_service_mock
+app.dependency_overrides[Config] = lambda: config
+app.dependency_overrides[JwksClient] = lambda: jwks_client
+app.dependency_overrides[engine_builder] = lambda: engine
 
 T = TypeVar("T")
 
@@ -78,26 +87,17 @@ async def const_async(ret: T) -> T:
 
 
 class TestApi(unittest.IsolatedAsyncioTestCase):
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     client = TestClient(app)
-    jwk_set_cache = new_jwk_set_cache()
 
     async def asyncSetUp(self) -> None:
-        load_config(".env.test")
-
-        set_engine(self.engine)
-        auth_verifier.jwks_client.jwk_set_cache = self.jwk_set_cache
-        async with self.engine.connect() as conn:
+        async with engine.connect() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
         global location_service_mock
         location_service_mock.get_country = lambda ip: const_async("test_country")
 
     async def asyncTearDown(self) -> None:
-        load_config(DEFAULT_ENV_FILES)
-
-        auth_verifier.jwks_client.jwk_set_cache = None
-        async with self.engine.connect() as conn:
+        async with engine.connect() as conn:
             await conn.run_sync(Base.metadata.drop_all)
 
     async def test_create_new_url_not_authenticated(self):
@@ -125,17 +125,22 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
             response.json(), {"key": "zulu", "target": "https://example.co.id/"}
         )
 
-        async with get_sessionmaker()() as session:
-            stmt = select(Url).order_by(Url.key)
-            result = await session.execute(stmt)
-
-            self.assertEqual(
-                list(result.scalars()),
-                [
-                    Url(owner="testing", key="test", target="https://example.com/"),
-                    Url(owner="testing", key="zulu", target="https://example.co.id/"),
+        response = self.client.get("/urls", auth=auth())
+        self.assertEqual(
+            response.json(),
+            {
+                "urls": [
+                    {
+                        "key": "test",
+                        "target": "https://example.com/",
+                    },
+                    {
+                        "key": "zulu",
+                        "target": "https://example.co.id/",
+                    },
                 ],
-            )
+            },
+        )
 
     def test_create_new_url_invalid_input(self):
         for body in [
@@ -171,7 +176,10 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
         ]
 
         for url in reversed(urls):
-            self.client.post("/urls", json=url["body"], auth=auth(url["owner"]))
+            response = self.client.post(
+                "/urls", json=url["body"], auth=auth(url["owner"])
+            )
+            self.assertEqual(response.status_code, 201)
 
         result = self.client.get("/urls", auth=auth("user_1"))
         self.assertEqual(result.json(), {"urls": [urls[0]["body"]]})

@@ -1,11 +1,11 @@
-from typing import Optional
+from typing import Annotated, Optional
 
 import jwt
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, SecurityScopes
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
-from deps.config import get_config
+from deps.config import Config
 
 
 class UnauthorizedException(HTTPException):
@@ -24,41 +24,42 @@ class Jwt(BaseModel):
     sub: str = Field()
 
 
-class VerifyToken:
-    def __init__(self) -> None:
+class JwksClient:
+    def __init__(self, config: Annotated[Config, Depends(Config)]) -> None:
         # This gets the JWKS from a given URL and does processing so you can
         # use any of the keys available
-        jwks_url = f"https://{get_config().auth0_domain}/.well-known/jwks.json"
-        self.jwks_client = jwt.PyJWKClient(jwks_url)
+        jwks_url = f"https://{config.auth0_domain}/.well-known/jwks.json"
+        self.client = jwt.PyJWKClient(jwks_url)
 
-    async def verify(
-        self,
-        security_scopes: SecurityScopes,
-        token: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer()),
-    ) -> Jwt:
-        if token is None:
-            raise UnauthenticatedException
+    def key(self, credentials: str) -> str:
+        return self.client.get_signing_key_from_jwt(credentials).key
 
-        # This gets the 'kid' from the passed token
-        try:
-            signing_key = self.jwks_client.get_signing_key_from_jwt(
-                token.credentials
-            ).key
-        except jwt.exceptions.PyJWKClientError as error:
-            raise UnauthorizedException(str(error))
-        except jwt.exceptions.DecodeError as error:
-            raise UnauthorizedException(str(error))
 
-        config = get_config()
-        try:
-            payload = jwt.decode(
-                token.credentials,
-                signing_key,
-                algorithms=config.auth0_algorithms,
-                audience=config.auth0_api_audience,
-                issuer=config.auth0_issuer,
-            )
-        except Exception as error:
-            raise UnauthorizedException(str(error))
+async def verify_token(
+    config: Annotated[Config, Depends(Config)],
+    jwks_client: Annotated[JwksClient, Depends(JwksClient)],
+    token: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer()),
+) -> Jwt:
+    if token is None:
+        raise UnauthenticatedException
 
-        return Jwt(**payload)
+    # This gets the 'kid' from the passed token
+    try:
+        signing_key = jwks_client.key(token.credentials)
+    except jwt.exceptions.PyJWKClientError as error:
+        raise UnauthorizedException(str(error))
+    except jwt.exceptions.DecodeError as error:
+        raise UnauthorizedException(str(error))
+
+    try:
+        payload = jwt.decode(
+            token.credentials,
+            signing_key,
+            algorithms=config.auth0_algorithms,
+            audience=config.auth0_api_audience,
+            issuer=config.auth0_issuer,
+        )
+    except Exception as error:
+        raise UnauthorizedException(str(error))
+
+    return Jwt(**payload)

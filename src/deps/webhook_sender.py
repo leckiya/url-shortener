@@ -4,18 +4,18 @@ import requests
 from fastapi import Depends
 from sqlalchemy.exc import NoResultFound
 
-from deps.database import SessionGetter, get_sessionmaker
+from deps.database import SessionMaker
 from log import logger
 from models import Url, Webhook
 
 
 class WebhookSender:
-    get_session: SessionGetter
+    session_maker: SessionMaker
 
     def __init__(
-        self, get_session: Annotated[SessionGetter, Depends(get_sessionmaker)]
+        self, get_session: Annotated[SessionMaker, Depends(SessionMaker)]
     ) -> None:
-        self.get_session = get_session
+        self.session_maker = get_session
 
     async def link_clicked(self, url: Url):
         await self._send(url.owner, {"action": "redirect", "key": url.key})
@@ -36,7 +36,7 @@ class WebhookSender:
         )
 
     async def _send(self, user: str, body: Any):
-        async with self.get_session() as session:
+        async with self.session_maker() as session:
             async with session.begin():
                 try:
                     webhook = await session.get_one(Webhook, user)
