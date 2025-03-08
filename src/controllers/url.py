@@ -12,7 +12,7 @@ from sqlalchemy.sql.functions import count
 from auth import Jwt
 from controllers import auth
 from deps.database import SessionGetter, get_sessionmaker
-from deps.ip import LocationService, location_service
+from deps.ip import LocationService
 from deps.openai import get_recommendation
 from deps.webhook_sender import WebhookSender
 from models import Url, UrlRedirectUsage
@@ -162,7 +162,7 @@ async def update_url(
 async def redirect(
     get_session: Annotated[SessionGetter, Depends(get_sessionmaker)],
     key: Annotated[str, KeyField],
-    location_service: Annotated[LocationService, Depends(location_service)],
+    location_service: Annotated[LocationService, Depends(LocationService)],
     webhook_sender: Annotated[WebhookSender, Depends(WebhookSender)],
     request: Request,
 ) -> RedirectResponse:
