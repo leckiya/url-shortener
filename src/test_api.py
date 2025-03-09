@@ -585,7 +585,7 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
                 json={
                     "url": "https://webhook.com/",
                     "body": {
-                        "action": "deleted",
+                        "action": "updated",
                         "key": "test",
                         "new_target": "https://example-2.com/",
                     },
