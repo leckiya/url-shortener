@@ -10,9 +10,16 @@ from sqlalchemy.ext.asyncio import (
 
 from deps.config import Config
 
+engine = None
+
 
 def engine_builder(config: Annotated[Config, Depends(Config)]):
-    create_async_engine(postgres_url(config), pool_size=20)
+    global engine
+    if engine is not None:
+        return engine
+
+    engine = create_async_engine(postgres_url(config), pool_size=20)
+    return engine
 
 
 class SessionMaker:

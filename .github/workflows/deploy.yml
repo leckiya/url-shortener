@@ -6,11 +6,16 @@ on:
       - master
 
 jobs:
-  deploy:
+  deploy-api:
+    strategy:
+      matrix:
+        service_id:
+          - ${{ vars.RAILWAY_API_SERVICE_ID }}
+          - ${{ vars.RAILWAY_WEBHOOK_SERVICE_ID }}
     runs-on: ubuntu-latest
     container: ghcr.io/railwayapp/cli:latest
     env:
-      SERVICE_ID: ${{ vars.RAILWAY_SERVICE_ID }}
+      SERVICE_ID: ${{ matrix.service_id }}
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
     steps:
       - uses: actions/checkout@v3

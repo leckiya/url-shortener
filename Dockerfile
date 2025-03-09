@@ -22,6 +22,6 @@ ENV VIRTUAL_ENV=/app/.venv \
 COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 
 COPY src ./src
-COPY entry.sh .
+COPY scripts ./scripts
 
-CMD ["./entry.sh"]
+CMD ["./scripts/api.sh"]
