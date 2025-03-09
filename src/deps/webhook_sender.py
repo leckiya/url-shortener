@@ -37,7 +37,7 @@ class WebhookSender:
 
     async def link_updated(self, url: Url):
         await self._send(
-            url.owner, {"action": "deleted", "key": url.key, "new_target": url.target}
+            url.owner, {"action": "updated", "key": url.key, "new_target": url.target}
         )
 
     async def _send(self, user: str, body: Any):
