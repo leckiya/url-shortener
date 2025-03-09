@@ -56,8 +56,8 @@ class WebhookSender:
                         ) as response:
                             if response.status != 200:
                                 logger.error(
-                                    f"failed to send webhook to {self.webhook_host} with"
-                                    f" status code {response.status}"
+                                    f"failed to send webhook to {self.webhook_host} "
+                                    f"with status code {response.status}"
                                 )
                 except Exception as e:
                     logger.error(f"failed to send webhook: {e}")

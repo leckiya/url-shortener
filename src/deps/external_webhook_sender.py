@@ -44,7 +44,7 @@ class ExternalWebhookSender:
             return
 
         try:
-            logger.info(f"starting worker")
+            logger.info("starting worker")
             while True:
                 try:
                     webhook = await wait_for(queue.get(), 1.0)

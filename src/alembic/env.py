@@ -2,9 +2,9 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 
-from deps.config import Config
 import models
 from alembic import context
+from deps.config import Config
 from deps.database import postgres_url
 
 # this is the Alembic Config object, which provides
