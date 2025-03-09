@@ -43,7 +43,7 @@ class UrlRedirectUsage(Base):
     id: Mapped[int] = mapped_column(
         Sequence("url_redirect_usages_id_seq"), primary_key=True
     )
-    url_key: Mapped[str] = mapped_column(ForeignKey("urls.key"))
+    url_key: Mapped[str] = mapped_column(ForeignKey("urls.key", ondelete="CASCADE"))
     country: Mapped[str] = mapped_column(server_default="unknown")
     count: Mapped[int] = mapped_column(server_default="1")
 
