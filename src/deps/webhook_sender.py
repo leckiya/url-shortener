@@ -1,6 +1,6 @@
 from typing import Annotated, Any
 
-import requests
+from aiohttp import ClientSession
 from fastapi import Depends
 from sqlalchemy.exc import NoResultFound
 
@@ -43,12 +43,13 @@ class WebhookSender:
                 except NoResultFound:
                     return
 
-                response = requests.post(
-                    webhook.url,
-                    json=body,
-                )
-                if response.status_code != 200:
-                    logger.warning(
-                        f"failed to send webhook to {webhook.url} with"
-                        f" status code {response.status_code}"
-                    )
+                async with ClientSession() as session:
+                    async with session.post(
+                        webhook.url,
+                        json=body,
+                    ) as response:
+                        if response.status != 200:
+                            logger.warning(
+                                f"failed to send webhook to {webhook.url} with"
+                                f" status code {response.status}"
+                            )

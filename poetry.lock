@@ -961,16 +961,6 @@ socks = ["socksio (==1.*)"]
 trio = ["trio (>=0.22.0,<1.0)"]
 
 [[package]]
-name = "httpretty"
-version = "1.1.4"
-description = "HTTP client mock for Python"
-optional = false
-python-versions = ">=3"
-files = [
-    {file = "httpretty-1.1.4.tar.gz", hash = "sha256:20de0e5dd5a18292d36d928cc3d6e52f8b2ac73daec40d41eb62dee154933b68"},
-]
-
-[[package]]
 name = "httptools"
 version = "0.6.4"
 description = "A collection of framework independent HTTP protocol utils."
@@ -2592,4 +2582,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "d06dd3b023e47fe221fd983d01cee276d7487055eed61ca22524af5da4079987"
+content-hash = "d0d94f33af463eececec99f37d79487422e8a1910ffb26a3fa27155226e4fa6a"

@@ -1,11 +1,10 @@
-import json
 import unittest
 from typing import Any, Callable, TypeVar
 from unittest.mock import Mock
 
-import httpretty
 import jwt
 import jwt.utils
+from aioresponses import aioresponses
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import (
     Encoding,
@@ -455,111 +454,128 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
             response = self.client.get("/webhooks", auth=auth())
             self.assertEqual(response.status_code, 404)
 
-    @httpretty.activate()
     def test_webhook_on_redirect(self):
-        httpretty.register_uri(httpretty.POST, "https://webhook.com")
+        with aioresponses() as m:
+            m.post("https://webhook.com/", payload={})
+            response = self.client.post(
+                "/urls",
+                json={"key": "test", "target": "https://example.com"},
+                auth=auth(),
+            )
+            self.assertEqual(response.status_code, 201)
+            self.assertEqual(
+                response.json(), {"key": "test", "target": "https://example.com/"}
+            )
 
-        response = self.client.post(
-            "/webhooks", json={"url": "https://webhook.com"}, auth=auth()
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"url": "https://webhook.com/"})
+            response = self.client.post(
+                "/webhooks", json={"url": "https://webhook.com"}, auth=auth()
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json(), {"url": "https://webhook.com/"})
 
-        response = self.client.post(
-            "/urls", json={"key": "test", "target": "https://example.com"}, auth=auth()
-        )
-        self.assertEqual(response.status_code, 201)
-        self.assertEqual(
-            response.json(), {"key": "test", "target": "https://example.com/"}
-        )
+            response = self.client.get("/redirect/test", follow_redirects=False)
+            self.assertEqual(response.status_code, 308)
+            self.assertEqual(response.headers.get("location"), "https://example.com/")
 
-        response = self.client.get("/redirect/test", follow_redirects=False)
-        self.assertEqual(response.status_code, 308)
-        self.assertEqual(response.headers.get("location"), "https://example.com/")
+            m.assert_called_once_with(
+                "https://webhook.com",
+                method="POST",
+                json={"action": "redirect", "key": "test"},
+            )
 
-        body = json.loads(httpretty.last_request().body)
-        self.assertEqual(body, {"action": "redirect", "key": "test"})
-
-    @httpretty.activate()
     def test_webhook_on_create(self):
-        httpretty.register_uri(httpretty.POST, "https://webhook.com")
+        with aioresponses() as m:
+            m.post("https://webhook.com/", payload={})
+            response = self.client.post(
+                "/webhooks", json={"url": "https://webhook.com"}, auth=auth()
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json(), {"url": "https://webhook.com/"})
 
-        response = self.client.post(
-            "/webhooks", json={"url": "https://webhook.com"}, auth=auth()
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"url": "https://webhook.com/"})
+            response = self.client.post(
+                "/urls",
+                json={"key": "test", "target": "https://example.com"},
+                auth=auth(),
+            )
+            self.assertEqual(response.status_code, 201)
+            self.assertEqual(
+                response.json(), {"key": "test", "target": "https://example.com/"}
+            )
 
-        response = self.client.post(
-            "/urls", json={"key": "test", "target": "https://example.com"}, auth=auth()
-        )
-        self.assertEqual(response.status_code, 201)
-        self.assertEqual(
-            response.json(), {"key": "test", "target": "https://example.com/"}
-        )
+            m.assert_called_once_with(
+                "https://webhook.com",
+                method="POST",
+                json={
+                    "action": "created",
+                    "key": "test",
+                    "target": "https://example.com/",
+                },
+            )
 
-        body = json.loads(httpretty.last_request().body)
-        self.assertEqual(
-            body,
-            {"action": "created", "key": "test", "target": "https://example.com/"},
-        )
-
-    @httpretty.activate()
     def test_webhook_on_delete(self):
-        httpretty.register_uri(httpretty.POST, "https://webhook.com")
+        with aioresponses() as m:
+            m.post("https://webhook.com/", payload={})
 
-        response = self.client.post(
-            "/webhooks", json={"url": "https://webhook.com"}, auth=auth()
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"url": "https://webhook.com/"})
+            response = self.client.post(
+                "/urls",
+                json={"key": "test", "target": "https://example.com"},
+                auth=auth(),
+            )
+            self.assertEqual(response.status_code, 201)
+            self.assertEqual(
+                response.json(), {"key": "test", "target": "https://example.com/"}
+            )
 
-        response = self.client.post(
-            "/urls", json={"key": "test", "target": "https://example.com"}, auth=auth()
-        )
-        self.assertEqual(response.status_code, 201)
-        self.assertEqual(
-            response.json(), {"key": "test", "target": "https://example.com/"}
-        )
+            response = self.client.post(
+                "/webhooks", json={"url": "https://webhook.com"}, auth=auth()
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json(), {"url": "https://webhook.com/"})
 
-        response = self.client.delete("/urls/test", auth=auth())
-        self.assertEqual(response.status_code, 200)
+            response = self.client.delete("/urls/test", auth=auth())
+            self.assertEqual(response.status_code, 200)
 
-        body = json.loads(httpretty.last_request().body)
-        self.assertEqual(
-            body,
-            {"action": "deleted", "key": "test", "target": "https://example.com/"},
-        )
+            m.assert_called_once_with(
+                "https://webhook.com",
+                method="POST",
+                json={
+                    "action": "deleted",
+                    "key": "test",
+                    "target": "https://example.com/",
+                },
+            )
 
-    @httpretty.activate()
     def test_webhook_on_update(self):
-        httpretty.register_uri(httpretty.POST, "https://webhook.com")
+        with aioresponses() as m:
+            m.post("https://webhook.com/", payload={})
 
-        response = self.client.post(
-            "/webhooks", json={"url": "https://webhook.com"}, auth=auth()
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"url": "https://webhook.com/"})
+            response = self.client.post(
+                "/urls",
+                json={"key": "test", "target": "https://example.com"},
+                auth=auth(),
+            )
+            self.assertEqual(response.status_code, 201)
+            self.assertEqual(
+                response.json(), {"key": "test", "target": "https://example.com/"}
+            )
 
-        response = self.client.post(
-            "/urls", json={"key": "test", "target": "https://example.com"}, auth=auth()
-        )
-        self.assertEqual(response.status_code, 201)
-        self.assertEqual(
-            response.json(), {"key": "test", "target": "https://example.com/"}
-        )
+            response = self.client.post(
+                "/webhooks", json={"url": "https://webhook.com"}, auth=auth()
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json(), {"url": "https://webhook.com/"})
 
-        response = self.client.patch(
-            "/urls/test", json={"target": "https://example-2.com/"}, auth=auth()
-        )
-        self.assertEqual(response.status_code, 200)
+            response = self.client.patch(
+                "/urls/test", json={"target": "https://example-2.com/"}, auth=auth()
+            )
+            self.assertEqual(response.status_code, 200)
 
-        body = json.loads(httpretty.last_request().body)
-        self.assertEqual(
-            body,
-            {
-                "action": "deleted",
-                "key": "test",
-                "new_target": "https://example-2.com/",
-            },
-        )
+            m.assert_called_once_with(
+                "https://webhook.com",
+                method="POST",
+                json={
+                    "action": "deleted",
+                    "key": "test",
+                    "new_target": "https://example-2.com/",
+                },
+            )
