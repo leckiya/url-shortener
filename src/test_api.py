@@ -16,11 +16,11 @@ from httpx import Request
 from jwt.jwk_set_cache import JWKSetCache
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from api_svc import app
 from auth import JwksClient
 from deps.config import Config
 from deps.database import engine_builder
 from deps.ip import LocationService
-from main import app
 from models import Base
 
 private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -93,7 +93,7 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
             await conn.run_sync(Base.metadata.create_all)
 
         global location_service_mock
-        location_service_mock.get_country = lambda ip: const_async("test_country")
+        location_service_mock.get_country = lambda _: const_async("test_country")
 
     async def asyncTearDown(self) -> None:
         async with engine.connect() as conn:
@@ -456,7 +456,7 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
 
     def test_webhook_on_redirect(self):
         with aioresponses() as m:
-            m.post("https://webhook.com/", payload={})
+            m.post("http://localhost:8001/send", payload={})
             response = self.client.post(
                 "/urls",
                 json={"key": "test", "target": "https://example.com"},
@@ -478,14 +478,17 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(response.headers.get("location"), "https://example.com/")
 
             m.assert_called_once_with(
-                "https://webhook.com",
+                "http://localhost:8001/send",
                 method="POST",
-                json={"action": "redirect", "key": "test"},
+                json={
+                    "url": "https://webhook.com/",
+                    "body": {"action": "redirect", "key": "test"},
+                },
             )
 
     def test_webhook_on_create(self):
         with aioresponses() as m:
-            m.post("https://webhook.com/", payload={})
+            m.post("http://localhost:8001/send", payload={})
             response = self.client.post(
                 "/webhooks", json={"url": "https://webhook.com"}, auth=auth()
             )
@@ -503,18 +506,21 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
             )
 
             m.assert_called_once_with(
-                "https://webhook.com",
+                "http://localhost:8001/send",
                 method="POST",
                 json={
-                    "action": "created",
-                    "key": "test",
-                    "target": "https://example.com/",
+                    "url": "https://webhook.com/",
+                    "body": {
+                        "action": "created",
+                        "key": "test",
+                        "target": "https://example.com/",
+                    },
                 },
             )
 
     def test_webhook_on_delete(self):
         with aioresponses() as m:
-            m.post("https://webhook.com/", payload={})
+            m.post("http://localhost:8001/send", payload={})
 
             response = self.client.post(
                 "/urls",
@@ -536,18 +542,21 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 200)
 
             m.assert_called_once_with(
-                "https://webhook.com",
+                "http://localhost:8001/send",
                 method="POST",
                 json={
-                    "action": "deleted",
-                    "key": "test",
-                    "target": "https://example.com/",
+                    "url": "https://webhook.com/",
+                    "body": {
+                        "action": "deleted",
+                        "key": "test",
+                        "target": "https://example.com/",
+                    },
                 },
             )
 
     def test_webhook_on_update(self):
         with aioresponses() as m:
-            m.post("https://webhook.com/", payload={})
+            m.post("http://localhost:8001/send")
 
             response = self.client.post(
                 "/urls",
@@ -571,11 +580,14 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 200)
 
             m.assert_called_once_with(
-                "https://webhook.com",
+                "http://localhost:8001/send",
                 method="POST",
                 json={
-                    "action": "deleted",
-                    "key": "test",
-                    "new_target": "https://example-2.com/",
+                    "url": "https://webhook.com/",
+                    "body": {
+                        "action": "deleted",
+                        "key": "test",
+                        "new_target": "https://example-2.com/",
+                    },
                 },
             )

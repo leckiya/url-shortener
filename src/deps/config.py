@@ -26,5 +26,7 @@ class Config(BaseSettings):
 
     ipinfo_token: str
 
+    webhook_host: str
+
     def __init__(self, env_file: Annotated[list[str], Depends(env_files)]) -> None:
         super().__init__(_env_file=env_file)

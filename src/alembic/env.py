@@ -2,6 +2,7 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 
+from deps.config import Config
 import models
 from alembic import context
 from deps.database import postgres_url
@@ -39,7 +40,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = postgres_url()
+    url = postgres_url(Config(["../.env"]))
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -59,7 +60,7 @@ def run_migrations_online() -> None:
 
     """
     migration_config = config.get_section(config.config_ini_section, {})
-    migration_config["sqlalchemy.url"] = postgres_url(False)
+    migration_config["sqlalchemy.url"] = postgres_url(Config(["../.env"]), False)
     connectable = engine_from_config(
         migration_config,
         prefix="sqlalchemy.",
