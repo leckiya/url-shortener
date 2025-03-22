@@ -12,7 +12,7 @@ from sqlalchemy.sql.functions import count
 from auth import Jwt, verify_token
 from deps.database import SessionMaker
 from deps.ip import LocationService
-from deps.openai import OpenAIClient
+from deps.openai import OpenAIClient, Suggestion
 from deps.webhook_sender import WebhookSender
 from models import Url, UrlRedirectUsage
 
@@ -191,6 +191,28 @@ async def redirect(
                 raise HTTPException(status_code=404)
 
 
+class SuggestionRequest(BaseModel):
+    target: str = TargetField
+
+
+class SuggestionResponse(BaseModel):
+    suggestions: List[Suggestion]
+
+
+@router.post(
+    "/suggest",
+    status_code=200,
+)
+async def suggest(
+    request: Annotated[SuggestionRequest, Body()],
+    openai_client: Annotated[OpenAIClient, Depends(OpenAIClient)],
+    jwt: Annotated[Jwt, Security(verify_token)],
+) -> SuggestionResponse:
+    return SuggestionResponse(
+        suggestions=await openai_client.get_recommendation(request.target)
+    )
+
+
 class UrlStatisticPerCountry(BaseModel):
     country: str = Field()
     count: int = Field()
@@ -238,28 +260,6 @@ async def get_url_statistic(
                 )
             except NoResultFound:
                 raise HTTPException(status_code=404)
-
-
-class SuggestionRequest(BaseModel):
-    target: str = TargetField
-
-
-class SuggestionResponse(BaseModel):
-    key: str
-
-
-@router.post(
-    "/suggest",
-    status_code=200,
-)
-async def suggest(
-    request: Annotated[SuggestionRequest, Body()],
-    openai_client: Annotated[OpenAIClient, Depends(OpenAIClient)],
-    jwt: Annotated[Jwt, Security(verify_token)],
-) -> SuggestionResponse:
-    return SuggestionResponse(
-        key=await openai_client.get_recommendation(request.target)
-    )
 
 
 class StatisticResponse(BaseModel):
