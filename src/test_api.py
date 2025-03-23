@@ -143,7 +143,7 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
 
     def test_create_new_url_invalid_input(self):
         for body in [
-            {"key": "Test", "target": "https://example.com"},
+            {"key": "T^st", "target": "https://example.com"},
             {"key": "t*st", "target": "https://example.com"},
             {"key": "test", "target": "fff://example.com"},
             {"key": "test", "target": "https://ex^mple.com"},

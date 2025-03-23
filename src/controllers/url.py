@@ -19,7 +19,7 @@ from models import Url, UrlRedirectUsage
 router = APIRouter()
 
 
-KeyField = Field(min_length=1, max_length=64, pattern=r"^[a-z\d\-_]+$")
+KeyField = Field(min_length=1, max_length=64, pattern=r"^[a-zA-Z\d\-_]+$")
 TargetField = Field(min_length=1, max_length=256)
 
 
